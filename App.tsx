@@ -1,118 +1,144 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
+import React, { useState, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  SafeAreaView, 
+  StyleSheet, 
+  TextInput,
+  TouchableOpacity,
+  Keyboard,
 } from 'react-native';
+import { api } from './src/services/api';
+import { CepProps } from './src/interfaces';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+export default function App(): React.JSX.Element {
+  const [cep, setCep] = useState('');
+  const [cepData, setCepData] = useState<CepProps | null>(null);
+  const [cepNotFound, setCepNotFound] = useState(false);
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+  const inputRef = useRef<TextInput | null>(null);
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+  async function getCep() {
+    await api.get(`/${cep}/json`)
+    .then(r => {
+      clear();
+      setCepData(r.data);
+    })
+    .catch(() => {
+      clear();
+      setCepNotFound(true)
+    })
+    .finally(() => Keyboard.dismiss())
+  }
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
+  function clear() {
+    setCep('');
+    setCepData(null);
+    setCepNotFound(false);
+    inputRef.current?.focus();
+  }
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.title}>Digite o cep desejado</Text>
+      <TextInput 
+        style={styles.input}
+        placeholder='Ex: 85601000'
+        keyboardType='numeric'
+        value={cep}
+        onChangeText={(text) => setCep(text)}
+        ref={inputRef}
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+
+      <View style={styles.btnContainer}>
+        <TouchableOpacity 
+          style={
+            [
+              styles.btnArea, 
+              { 
+                backgroundColor: !cep ? '#1d75cd33' : '#1d75cd', 
+              }
+            ]
+          }
+          onPress={getCep}
+          disabled={!cep}
+        >
+          <Text style={styles.btn}>Buscar</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.btnArea, { backgroundColor: '#cd3e1d' }]}
+          onPress={clear}
+        >
+          <Text style={styles.btn}>Limpar</Text>
+        </TouchableOpacity>
+      </View>
+  
+      {cepData && (
+        <View style={styles.resultContainer}>
+          <Text style={styles.textResult}>CEP: {cepData?.cep}</Text>
+          <Text style={styles.textResult}>Logradouro: {cepData?.logradouro}</Text>
+          <Text style={styles.textResult}>Bairro: {cepData?.bairro}</Text>
+          <Text style={styles.textResult}>Cidade: {cepData?.localidade}</Text>
+          <Text style={styles.textResult}>Estado: {cepData?.uf}</Text>
         </View>
-      </ScrollView>
+      )}
+
+      {cepNotFound && (
+        <View style={styles.resultContainer}>
+          <Text style={styles.textResult}>Ops! Cep não encontrado.</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingTop: 25,
+    backgroundColor: '#eee',
   },
-  sectionTitle: {
+  title: {
+    fontSize: 25,
+    fontWeight: '800',
+    color: '#000',
+  },
+  input: {
+    backgroundColor: '#fff',
+    marginTop: 25,
+    marginBottom: 25,
+    width: '90%',
+    padding: 10,
+    borderRadius: 8,
+    fontSize: 18,
+    color: '#1e1e1e',
+  },
+  btnContainer: {
+    flexDirection: 'row',
+    width: '80%',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  btnArea: {
+    borderRadius: 8,
+  },
+  btn: {
+    fontSize: 22,
+    padding: 15,
+    color: '#fff',
+  },
+  resultContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  textResult: {
     fontSize: 24,
     fontWeight: '600',
+    color: '#000',
+    marginTop: 5,
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
-
-export default App;
+})
